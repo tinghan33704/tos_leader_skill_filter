@@ -32,13 +32,20 @@ function checkDataLegality() {
 	const skill_str = leader_skill_type_string.flat()
 	
 	const invalid = leader_skill_data.filter(data => {
-		return data.tag.every(t => {
+		return data.tag.length && data.tag.every(t => {
 			return (Array.isArray(t.name) ? t.name.every(o => !skill_str.includes(o)) : !skill_str.includes(t.name)) 
 			|| (t.limit.length && t.limit.every(o => !leader_skill_limit_string.includes(o))) 
 			|| (t.object.length && t.object.every(o => !obj_str.includes(o)))
 		})
 	})
-	console.log(invalid)
+	console.log("Invalid team skill data:" + invalid)
+	
+	const allMonsterId = leader_skill_data.map(skill => skill?.monster).reduce((acc, cur) => acc.concat(cur) , [])
+	monster_data.forEach(monster => {
+		if(monster?.star > 0 && !allMonsterId.includes(monster?.id)) {
+			console.log(monster?.id+':'+monster?.name)
+		}
+	})
 }
 
 function openOptionPanel()
@@ -77,6 +84,8 @@ function renderOptionPanel() {
             if(Object.keys(option_obj).includes(skill))
             {
 				const applyToTeam = leader_skill_type_no_object.includes(skill)
+				const attrRaceBoardOpen = !applyToTeam && (option_attr_race_obj?.[skill]?.some(ar => ar) || option_object_obj?.[skill]?.some(ob => ob))
+				const limitBoardOpen = option_obj?.[skill]?.some(lim => lim)
                 render_str += `
 					<div class='row option-row'>
 						<div class='col-12 col-md-12 col-lg-4 option-text'>${skill}</div>
@@ -84,7 +93,7 @@ function renderOptionPanel() {
 							<div class='row'>
 								${
 									!applyToTeam ? `<div class='col-12 col-md-12 col-lg-12 option-title option-object-title'>
-										<div class="row board-collapse-div" data-toggle="collapse" data-target=".board-collapse-${option_id}" aria-expanded="false">
+										<div class="row board-collapse-div" data-toggle="collapse" data-target=".board-collapse-${option_id}" aria-expanded=${attrRaceBoardOpen ? 'true' : 'false'}>
 											<i class="fa fa-caret-down collapse-close" style="font-size: 1.2em; float: right;"></i>
 											<i class="fa fa-caret-up collapse-open" style="font-size: 1.2em; float: right;"></i>
 											作用對象
@@ -93,9 +102,9 @@ function renderOptionPanel() {
 										</div>
 									</div>` : ''
 								}
-								<div class='col-12 col-md-12 col-lg-12 option-board collapse board-collapse-${option_id}'>${renderAttributeRaceBoard(skill, option_id)}</div>
+								<div class='col-12 col-md-12 col-lg-12 option-board collapse board-collapse-${option_id}${attrRaceBoardOpen ? ' show' : ''}'>${renderAttributeRaceBoard(skill, option_id)}</div>
 								<div class='col-12 col-md-12 col-lg-12 option-title option-limit-title'>
-									<div class="row limit-collapse-div" data-toggle="collapse" data-target=".limit-collapse-${option_id}" aria-expanded="false">
+									<div class="row limit-collapse-div" data-toggle="collapse" data-target=".limit-collapse-${option_id}" aria-expanded=${limitBoardOpen ? 'true' : 'false'}>
 										<i class="fa fa-caret-down collapse-close" style="font-size: 1.2em; float: right;"></i>
 										<i class="fa fa-caret-up collapse-open" style="font-size: 1.2em; float: right;"></i>
 										發動條件
@@ -104,7 +113,7 @@ function renderOptionPanel() {
 									</div>
 								</div>
 								<div class='col-12 col-md-12 col-lg-12'>
-									<div class='row option-limit collapse limit-collapse-${option_id}''>
+									<div class='row option-limit collapse limit-collapse-${option_id}${limitBoardOpen ? ' show' : ''}'>
 									${leader_skill_limit_string.map(function(text, j){
 										const option_cnt = option_id * leader_skill_limit_string.length + j
 										const id = `option-${option_cnt} ${option_obj[skill][j] ? 'checked': ''}`
@@ -305,63 +314,6 @@ function startFilter()
 	
 	let keyword_set = checkKeyword();
 	
-	/*{
-        'name': '海之力',
-        'description': '水屬性攻擊力 1.5 倍',
-        'tag': [
-            {
-                'name': '增攻',
-                'object': ['水'],
-                'limit': []
-            }
-        ],
-        'monster': [1, 2, 176, 177, 241, 246, 251, 256, 270, 275, 280, 319, 320, 344, 379, 403, 443, 546, 566, 577, 706, 871, 926, 966, 967, 1006, 1007, 1111, 1112, 1631, 1859, 1899, 2367, 3005, 3007, 3008, 3009, 8026]
-    }
-	
-	{
-        "id": 0,
-        "name": "",
-        "attribute": "",
-        "race": "",
-        "star": 0,
-        "monsterTag": [],
-        "crossOver": false,
-        "vrPair": -1,
-        "skill": [
-            {
-                "name": "",
-                "type": "normal",
-                "charge": "",
-                "num": 0,
-                "description": "",
-                "tag": []
-            },
-            {
-                "name": "",
-                "type": "normal",
-                "charge": "",
-                "num": 0,
-                "description": "",
-                "tag": []
-            }
-        ],
-        "teamSkill": [
-            {
-                "description": "",
-                "activate": "",
-                "skill_tag": [],
-                "activate_tag": [],
-                "relative": []
-            }
-        ],
-        "maxLevel": 0,
-        "maxSkill": 0,
-        "maxRefine": 0,
-        "version": ""
-    },
-	
-	*/
-	
 	const option_attr_race_trans_obj = {}
 	$.each(Object.keys(option_attr_race_obj), (index, skill) => {
 		if(!leader_skill_type_no_object.includes(skill)) {
@@ -484,7 +436,7 @@ function startFilter()
 						if(!hasTag) return;
 					}
 						
-					filter_set.add({'id': monster, 'name': skill.name, 'description': skill.description})
+					filter_set.add({'id': monster, 'name': skill.name, 'description': skill.description, 'changedSkill': skill?.changedSkill || false})
 				})
 			}
 			else {       // AND
@@ -539,7 +491,7 @@ function startFilter()
 					
 				if(keyword_set.size > 0) {
 					let isKeywordChecked = true;
-					let skill_desc = textSanitizer(monster_skill.description);
+					let skill_desc = textSanitizer(skill.description);
 					
 					$.each([...keyword_set], (keyword_index, keyword) => {
 						if(!skill_desc.includes(keyword))
@@ -574,7 +526,7 @@ function startFilter()
 						if(!hasTag) return;
 					}
 						
-					filter_set.add({'id': monster, 'name': skill.name, 'description': skill.description})
+					filter_set.add({'id': monster, 'name': skill.name, 'description': skill.description, 'changedSkill': skill?.changedSkill || false})
 				})
 			}
 		}
@@ -602,7 +554,7 @@ function startFilter()
 					if(!hasTag) return;
 				}
 					
-				filter_set.add({'id': monster, 'name': skill.name, 'description': skill.description})
+				filter_set.add({'id': monster, 'name': skill.name, 'description': skill.description, 'changedSkill': skill?.changedSkill || false})
 			})
 		}
 	})
@@ -645,7 +597,9 @@ function renderResult() {
             
 		if(searchResult.length != 0)
 		{
-			$.each(searchResult, (index, monster) => {
+			const leaderSkill = searchResult.filter(data => !data?.changedSkill)
+			const changedLeaderSkill = searchResult.filter(data => data?.changedSkill)
+			$.each(leaderSkill, (index, monster) => {
 				
 				let sk_str = "";
 				
@@ -655,6 +609,27 @@ function renderResult() {
 				
 				str += renderMonsterImage(monster, sk_str);
 			});
+			
+			if(changedLeaderSkill.length) {
+				
+				// for changed leader skill, create a new row
+				if(leaderSkill.length) {
+					str += '<hr class="result_combine_hr">'
+				}
+				
+				$.each(changedLeaderSkill, (index, monster) => {
+					
+					let sk_str = "";
+					
+					sk_str += renderMonsterInfo(monster);
+					
+					sk_str += renderSkillInfo(monster);
+					
+					str += renderMonsterImage(monster, sk_str);
+				});
+			}
+				
+				
 		}
 		else
 		{
@@ -699,9 +674,12 @@ function renderSkillInfo(monster) {
     
     sk_str += `<div class='row'>`;
     
-	sk_str += `<div class='skill_tooltip skill_name col-12 col-sm-12 mb-1'>`;
-    sk_str += `${monster.name}</div>`
-    
+	if(monster?.changedSkill) {
+		sk_str += `<div class='skill_tooltip skill_name_combine col-12 col-sm-12 mb-1'><img src='../tos_tool_data/img/monster/combine.png' />&nbsp;${monster.name}</div>`
+    } else {
+		sk_str += `<div class='skill_tooltip skill_name col-12 col-sm-12 mb-1'>${monster.name}</div>`;
+	}
+	
     sk_str += `</div>`;
     
     sk_str += `
@@ -721,18 +699,13 @@ function renderMonsterImage(monster, tooltip_content, monsterObj) {
         return element.id == monster.id;
     });
     const monster_attr = monster_obj.attribute;
-    const hasSpecialImage = 'specialImage' in monster_obj && monster_obj.specialImage;
-	const hasImageChange = 'num' in monster ? monster_obj.skill[monster.num]?.imageChange : monster?.nums?.length === 1 ? monster_obj.skill[monster.nums[0]]?.imageChange ?? null : null;
     const notInInventory = useInventory && !playerData.card.includes(monster.id)
-	const isCombineSkill = monster_obj.skill[monster?.nums?.[0]]?.type === 'combine' || monster_obj.skill[monster?.num]?.type === 'combine';
+	const isChangedLeaderSkill = monster?.changedSkill;
 	
     return `
         <div class='col-3 col-md-2 col-lg-1 result'>
-            <img class='monster_img${notInInventory ? '_gray' : ''}' src='../tos_tool_data/img/monster/${hasImageChange ? hasImageChange[0] : monster_obj.id}.png' onerror='this.src="../tos_tool_data/img/monster/noname_${attr_zh_to_en[monster_attr]}.png"' onfocus=${hasImageChange ? `this.src="../tos_tool_data/img/monster/${hasImageChange[1]}.png"` : hasSpecialImage ? `this.src="../tos_tool_data/img/monster/${monster_obj.id}_sp.png"` : null} onblur=${hasImageChange ? `this.src="../tos_tool_data/img/monster/${hasImageChange[0]}.png"` : hasSpecialImage ? `this.src="../tos_tool_data/img/monster/${monster_obj.id}.png"` : null} tabindex=${monster_obj.id.toString().replace('?', '')} data-toggle='popover' data-title='' data-content="${tooltip_content}"></img>
-			${isCombineSkill ? `<img class='monster_img_combine_icon${notInInventory ? '_gray' : ''}' src="../tos_tool_data/img/monster/combine.png" />` : ``}
-			<!-- special image preload -->
-			<img class='monster_img${notInInventory ? '_gray' : ''}' style="display: none;" src=${hasSpecialImage ? `../tos_tool_data/img/monster/${monster_obj.id}_sp.png` : ''}>
-			<!-- -->
+            <img class='monster_img${notInInventory ? '_gray' : ''}' src='../tos_tool_data/img/monster/${monster_obj.id}.png' onerror='this.src="../tos_tool_data/img/monster/noname_${attr_zh_to_en[monster_attr]}.png"'  tabindex=${monster_obj.id.toString().replace('?', '')} data-toggle='popover' data-title='' data-content="${tooltip_content}"></img>
+			${isChangedLeaderSkill ? `<img class='monster_img_combine_icon${notInInventory ? '_gray' : ''}' src="../tos_tool_data/img/monster/combine.png" />` : ``}
             <div class='monsterId${notInInventory ? '_gray' : ''}'>
                 <a href='${`https://tos.fandom.com/zh/wiki/${monster_obj.id}`}' target='_blank'>${paddingZeros(monster_obj.id, 3)}</a>
             </div>
