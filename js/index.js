@@ -139,6 +139,20 @@ function renderOptionPanel() {
     $("#optionPanel .modal-body").html(render_str)
 }
 
+function selectWholeRow(option_id, row) {
+	for(let i = row * attr_type_string.length; i < (row + 1) * attr_type_string.length; i++) {
+		const isChecked = $(`#option-attr-race-${option_id}-${i}`).attr('checked')
+		$(`#option-attr-race-${option_id}-${i}`).attr('checked', !isChecked)
+	}
+}
+
+function selectWholeColumn(option_id, col) {
+	for(let i = col; i < 35; i += attr_type_string.length) {
+		const isChecked = $(`#option-attr-race-${option_id}-${i}`).attr('checked')
+		$(`#option-attr-race-${option_id}-${i}`).attr('checked', !isChecked)
+	}
+}
+
 function renderAttributeRaceBoard(skill, option_id) {
 	function renderButton(i, j) {
 		const id = i * attr_type_string.length + j
@@ -153,11 +167,26 @@ function renderAttributeRaceBoard(skill, option_id) {
 			<div class='col-12'>
 				<div class='row'>
 					<div class='col-2'></div>
-					${attr_type_string.map(attr => `<div class='col-2'>${attr}</div>`).join('')}
+					${attr_type_string.map((attr, attr_id) => `
+						<div class='col-2' onClick='selectWholeColumn(${option_id}, ${attr_id})' style='cursor: pointer;'>
+							${attr}
+						</div>
+					`).join('')}
 				</div>
 			</div>
 			<div class='col-12 attr-race-row'>
-				${race_type_string.slice(0, 7).map((race, race_id) => `<div class='row'><div class='col-2'>${race}</div>${[...Array(5).keys()].map(n => `<div class='col-2'>${renderButton(race_id, n)}</div>`).join('')}</div>`).join('')}
+				${race_type_string.slice(0, 7).map((race, race_id) => `
+					<div class='row'>
+						<div class='col-2' onClick='selectWholeRow(${option_id}, ${race_id})' style='cursor: pointer;'>
+							${race}
+						</div>
+						${[...Array(5).keys()].map(n => `
+							<div class='col-2'>
+								${renderButton(race_id, n)}
+							</div>`
+						).join('')}
+					</div>`
+				).join('')}
 			</div>
 			<div class='col-12 object-row'>
 				<div class='row'>
